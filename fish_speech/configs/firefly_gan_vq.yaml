@@ -10,7 +10,7 @@ backbone:
   _target_: fish_speech.models.vqgan.modules.firefly.ConvNeXtEncoder
   input_channels: 160
   depths: [3, 3, 9, 3]
-  dims: [128, 256, 384, 512]
+  dims: [128, 256, 384, 512] # 这里定义成output_channels （特征数目）更好理解， 通过卷积层下采样将单个特征的尺寸(长度或者维度)缩小了； 反之通过反卷积层将单个特征的尺寸(长度或者维度)放大了
   drop_path_rate: 0.2
   kernel_size: 7
 head:
@@ -26,7 +26,7 @@ head:
   post_conv_kernel_size: 13
 quantizer:
   _target_: fish_speech.models.vqgan.modules.fsq.DownsampleFiniteScalarQuantize
-  input_dim: 512
+  input_dim: 512 # 这里也是，定义成input_channels （特征数目）更好理解
   n_groups: 8
   n_codebooks: 1
   levels: [8, 5, 5, 5]
