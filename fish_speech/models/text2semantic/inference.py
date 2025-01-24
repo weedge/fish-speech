@@ -1,9 +1,3 @@
-from fish_speech.models.text2semantic.llama import (
-    BaseTransformer,
-    DualARTransformer,
-    NaiveTransformer,
-)
-from torch.nn.attention import SDPBackend, sdpa_kernel
 import os
 import queue
 import threading
@@ -40,6 +34,15 @@ torch._inductor.config.triton.unique_kernel_names = True
 if hasattr(torch._inductor.config, "fx_graph_cache"):
     # Experimental feature to reduce compilation times, will be on by default in future
     torch._inductor.config.fx_graph_cache = True
+
+
+from torch.nn.attention import SDPBackend, sdpa_kernel
+
+from fish_speech.models.text2semantic.llama import (
+    BaseTransformer,
+    DualARTransformer,
+    NaiveTransformer,
+)
 
 
 def multinomial_sample_one_no_sync(
@@ -366,7 +369,7 @@ def decode_n_tokens(
         if i < win_size:
             window = previous_tokens[:, :win_size]
         else:
-            window = previous_tokens[:, i - win_size: i]
+            window = previous_tokens[:, i - win_size : i]
 
         with (
             torch.backends.cuda.sdp_kernel(
@@ -386,7 +389,7 @@ def decode_n_tokens(
 
         input_pos += 1
         cur_token = next_token.view(1, model.config.num_codebooks + 1, -1)
-        previous_tokens[:, i: i + 1] = next_token.view(
+        previous_tokens[:, i : i + 1] = next_token.view(
             model.config.num_codebooks + 1, -1
         )
 
@@ -452,7 +455,7 @@ def generate(
         semantic_ids=semantic_ids,
         **sampling_kwargs,
     )
-    seq[:, T: T + 1] = next_token
+    seq[:, T : T + 1] = next_token
 
     input_pos = torch.tensor([T], device=device, dtype=torch.int)
     x = decode_n_tokens(
@@ -466,7 +469,7 @@ def generate(
     )
     # x = torch.cat(generated_tokens, dim=1)
     seq = seq[:, : T + 1 + x.size(1)]
-    seq[:, T + 1:] = x
+    seq[:, T + 1 :] = x
 
     return seq
 
@@ -498,7 +501,7 @@ def decode_n_tokens_agent(
         if i < win_size:
             window = previous_tokens[:, :, :win_size]
         else:
-            window = previous_tokens[:, :, i - win_size: i]
+            window = previous_tokens[:, :, i - win_size : i]
 
         with sdpa_kernel(
             SDPBackend.MATH
@@ -514,7 +517,7 @@ def decode_n_tokens_agent(
 
         input_pos += 1
         cur_token = next_token.view(batch_size, model.config.num_codebooks + 1, -1)
-        previous_tokens[:, :, i: i + 1] = next_token.view(
+        previous_tokens[:, :, i : i + 1] = next_token.view(
             batch_size, model.config.num_codebooks + 1, -1
         )
 
@@ -677,7 +680,7 @@ def load_model(checkpoint_path, device, precision, compile=False, is_agent=False
     )
 
     model = model.to(device=device, dtype=precision)
-    logger.info("Restored model from checkpoint")
+    logger.info(f"Restored model from checkpoint")
 
     if isinstance(model, DualARTransformer):
         decode_one_token = (
@@ -870,7 +873,7 @@ def generate_long(
 
             # Put the generated tokens
             # since there is <im_end>, we remove last token
-            codes = y[1:, prompt_length + 1:].clone()
+            codes = y[1:, prompt_length + 1 :].clone()
             assert (codes >= 0).all(), f"Negative code found"
 
             decoded = y[:, prompt_length:].clone()
